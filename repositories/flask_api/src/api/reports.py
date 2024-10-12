@@ -20,7 +20,7 @@ class Reports():
         #  self.HASHKEY = "keytohash12345"
 
     def get_data(self,):
-        return self.database.query_basic(self.columns)
+        return self.database.query_film(self.columns)
 
     # def hash_function(self, info: str):
     #      return hashlib.sha256(info.encode()).hexdigest()

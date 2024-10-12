@@ -1,3 +1,4 @@
-flask
-mysql-connector-python
-PyJWT
+flask==3.0.3
+mysql-connector-python==9.0.0
+PyJWT==2.9.0
+Faker==30.3.0

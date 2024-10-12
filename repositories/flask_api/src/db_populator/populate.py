@@ -1,6 +1,7 @@
 import os
 import mysql.connector
 import csv
+from generator import Generator
 
 def __read_csv(file_name:str="marketing.csv"):
     data = []
@@ -11,6 +12,9 @@ def __read_csv(file_name:str="marketing.csv"):
         for row in csv_reader:
             data.append(row)
     return data
+
+gen = Generator().generate_campaign_data()
+print(gen)
 
 mysql_config = {
     "host": os.getenv("DB_HOST", "mysql"),

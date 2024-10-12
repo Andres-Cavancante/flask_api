@@ -9,9 +9,9 @@ class database:
             "host": os.getenv("DB_HOST", "mysql"),
             "user": os.getenv("DB_USER", "root"),
             "password": os.getenv("DB_PASS", "pass"),
-            "port": int(os.getenv("DB_PORT", 3306))
+            "database": os.getenv("MYSQL_DATABASE", "my_database")
         }
-        self.database = os.getenv("DB_database", "flask_api")
+        self.database = os.getenv("DB_database", "sakila")
 
     def __interact(self, query: str, data: str = None): #REVISAR - mandar só o query
         response = None
@@ -21,7 +21,7 @@ class database:
 
         try:
             connection = mysql.connector.connect(**self.config)
-            cursor = connection.cursor(buffered=True)
+            cursor = connection.cursor(buffered=True) #REVISAR - o que é o buffered?
             cursor.execute(f"USE {self.database};")
             cursor.execute(query) if not data else cursor.execute(query, data)
             if cursor.rowcount:
@@ -49,14 +49,14 @@ class database:
         if check:
             return {
                 "code": 304, #REVISAR
-                "message": f"Requested columns {check} do not exist on table {table}"
+                "message": f"Requested columns {check} do not exist on table '{table}'"
             }
 
-    def query_basic(self, columns: List[str]):
-        check = self.__check_columns_availability(columns, "basic")
+    def query_film(self, columns: List[str]):
+        check = self.__check_columns_availability(columns, "film")
         if check:
             return check
-        query = f"SELECT {', '.join(columns)} FROM basic"
+        query = f"SELECT {', '.join(columns)} FROM film"
         data = self.__interact(query)
         if isinstance(data, dict):
             return data

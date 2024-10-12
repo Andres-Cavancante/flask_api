@@ -10,6 +10,11 @@ def index():
 @app.route("/reports/<account_id>", methods=["GET"])
 def get_data(account_id):
     payload = request.get_json()
+    if not isinstance(payload.get("COLUMNS"), list):
+        return jsonify({
+                "code": 400,
+                "message": f"Parameter 'COLUMNS' must be of type list"
+            })
     data = Reports(payload.get("COLUMNS")).get_data()
     return jsonify(data)
 
