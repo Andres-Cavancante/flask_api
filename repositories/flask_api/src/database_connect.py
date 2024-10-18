@@ -1,63 +1,73 @@
 import mysql.connector
 import os
 from typing import List, Tuple
-from mysql.connector import Error, InterfaceError
+from mysql.connector import Error
+from src.exceptions import ApiException
 
 class database:
-    def __init__(self):
-        self.config = {
+    def __init__(self, database_name: str):
+        self.__config = {
             "host": os.getenv("DB_HOST", "mysql"),
             "user": os.getenv("DB_USER", "root"),
-            "password": os.getenv("DB_PASS", "pass"),
-            "database": os.getenv("MYSQL_DATABASE", "my_database")
+            "password": os.getenv("DB_PASS", "pass")
         }
-        self.database = os.getenv("DB_database", "sakila")
+        self.__database = database_name
 
     def __interact(self, query: str, data: str = None): #REVISAR - mandar só o query
-        response = None
-        status_message = {
-            "code": 503 #REVISAR
-        }
-
         try:
-            connection = mysql.connector.connect(**self.config)
+            connection = mysql.connector.connect(**self.__config)
             cursor = connection.cursor(buffered=True) #REVISAR - o que é o buffered?
-            cursor.execute(f"USE {self.database};")
+            cursor.execute(f"USE {self.__database};")
             cursor.execute(query) if not data else cursor.execute(query, data)
-            if cursor.rowcount:
-                response = cursor.fetchall()
+            response = cursor.fetchall() if cursor.rowcount else []
             connection.commit()
             cursor.close()
             connection.close()
-        except InterfaceError as interface_error:
-            status_message["message"] = interface_error.msg
-            return status_message
+        except Error as error:
+            raise ApiException(error.msg, 500)
 
         return response
 
-    def __get_table_columns(self, table_name: str):
+    def __get_table_columns(self, table_name: str) -> List[Tuple[str]]:
         query = ("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE"
-                 f" TABLE_SCHEMA = '{self.database}' AND TABLE_NAME = '{table_name}';")
-        return self.__interact(query)
+                 f" TABLE_SCHEMA = '{self.__database}' AND TABLE_NAME = '{table_name}';")
+        table_columns = self.__interact(query)
+        return [column[0] for column in table_columns]
 
     def __check_columns_availability(self, request_columns: List[str], table: str) -> List[str | None]:
         table_columns = self.__get_table_columns(table)
-        if isinstance(table_columns, dict):
-            return table_columns
-        table_columns = [column[0] for column in table_columns]
         check = list(set(request_columns)-set(table_columns))
         if check:
-            return {
-                "code": 304, #REVISAR
-                "message": f"Requested columns {check} do not exist on table '{table}'"
-            }
+            raise ApiException(f"Requested columns {check} do not exist on table '{table}'", 400)
 
-    def query_film(self, columns: List[str]):
-        check = self.__check_columns_availability(columns, "film")
-        if check:
-            return check
-        query = f"SELECT {', '.join(columns)} FROM film"
+
+
+    def query_all(self, table_name: str):
+        table_columns = self.__get_table_columns(table_name)
+        data = self.__interact(f"SELECT * FROM {table_name}")
+        return [dict(zip(table_columns, row)) for row in data]
+
+    def query_columns(self,
+                    table_name: str,
+                    columns: List[str],
+                    start_date: str=None,
+                    end_date: str=None,
+                    custom_filter: str=None
+                    ):
+        self.__check_columns_availability(columns, table_name)
+        if start_date and end_date:
+            query = f"SELECT {', '.join(columns)} FROM {table_name} WHERE date BETWEEN '{start_date}' AND '{end_date}'"
+        else:
+            query = f"SELECT {', '.join(columns)} FROM {table_name}"
+
+        if custom_filter:
+            query += " WHERE " if not "WHERE" in query else "AND"
+            query += custom_filter
+
         data = self.__interact(query)
-        if isinstance(data, dict):
-            return data
+
+        if not data:
+            return {}
+        if len(data) == 1:
+            return dict(zip(columns, data[0]))
         return [dict(zip(columns, row)) for row in data]

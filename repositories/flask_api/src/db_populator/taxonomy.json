@@ -1,0 +1,13 @@
+{
+    "objective": ["awareness", "conversions", "app_installs", "traffic", "video_views"],
+    "country": ["US", "UK", "BR", "EU", "LATAM"],
+    "audience": ["males_18-35", "females_25-45", "all_18-65", "parents", "tech_enthusiasts"],
+    "placement": ["facebook_feed", "instagram_stories", "google_search", "tiktok_video"],
+    "device": ["mobile", "desktop", "tablet", "all"],
+    "channel": ["summer_campaign", "back_to_school", "black_friday"],
+    "platform": ["facebook", "instagram", "tiktok", "google"],
+    "creative_type": ["image", "video", "carousel"],
+    "creative_dimension": ["1080x1080", "1980x1280", "1920x1080", "1080x1920"],
+    "product_category": ["a", "b", "c", "d", "e", "f", "g"],
+    "journey_stage": ["a", "b", "c", "d", "e", "f", "g"]
+}

@@ -1,59 +1,58 @@
 import os
+from time import sleep
 import mysql.connector
-import csv
+from mysql.connector import Error
 from generator import Generator
 
-def __read_csv(file_name:str="marketing.csv"):
-    data = []
-    file_path = os.path.join(os.getcwd(), file_name)
-    # file_path = r"C:\Users\burge\OneDrive\Área de Trabalho\Projetos\flask-api\repositories\mysql_database\marketing.csv"
-    with open(file_path, 'r') as file:
-        csv_reader = csv.DictReader(file)
-        for row in csv_reader:
-            data.append(row)
-    return data
+retries = 10
+while retries > 0:
+    try:
+        connection = mysql.connector.connect(
+            host=os.getenv("DB_HOST", "mysql"),
+            user=os.getenv("DB_USER", "root"),
+            password=os.getenv("DB_PASS", "pass"),
+            database=os.getenv("MYSQL_DATABASE", "my_database")
+        )
+        if connection.is_connected():
+            break
+        print("Successfuly Connected")
+    except Error as e:
+        print(f"Error: {e}")
+        retries -= 1
+        print(f"Retrying 30 seconds... {retries} attempts left")
+        sleep(30)
 
-gen = Generator().generate_campaign_data()
-print(gen)
-
-mysql_config = {
-    "host": os.getenv("DB_HOST", "mysql"),
-    "user": os.getenv("DB_USER", "root"),
-    "password": os.getenv("DB_PASS", "pass"),
-    "port": int(os.getenv("DB_PORT", 3306))
-}
-
-connection = mysql.connector.connect(**mysql_config)
 cursor = connection.cursor()
+cursor.execute("USE flask_api;")
 
-data = __read_csv()
+gen = Generator()
 
-insert_query = ("INSERT INTO basic"
-                    "(date,"
-                    "campaignName,"
-                    "campaignId,"
-                    "category,"
-                    "impressions,"
-                    "clicks,"
-                    "leads,"
-                    "orders,"
-                    "spend,"
-                    "revenue)" 
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
+for item in gen.generate_campaign_data():
+    cursor.execute((
+        "INSERT INTO basic"
+        "(date,"
+        "campaign_name,"
+        "campaign_id,"
+        "adset_name,"
+        "adset_id,"
+        "ad_name,"
+        "ad_id,"
+        "clicks,"
+        "cost,"
+        "impressions,"
+        "revenue)"
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+    ), item)
+    connection.commit()
 
-cursor.execute(f"USE {os.getenv('DB_database', 'flask_api')};")
-for item in data:
-    elements = (item["c_date"],
-                item["campaign_name"],
-                item["campaign_id"],
-                item["category"],
-                item["impressions"],
-                item["clicks"],
-                item["leads"],
-                item["orders"],
-                item["mark_spent"],
-                item["revenue"])
-    cursor.execute(insert_query, elements)
+for item in gen.generate_auth_data():
+    cursor.execute((
+        "INSERT INTO authorization"
+        "(client_id,"
+        "client_secret,"
+        "refresh_token)"
+        "VALUES (%s, %s, %s)"
+        ), item)
     connection.commit()
 
 cursor.close()
