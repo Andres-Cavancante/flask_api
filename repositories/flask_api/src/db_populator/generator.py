@@ -8,14 +8,28 @@ import random
 class Generator:
     def __init__(self):
         self.fake = Faker("pt_BR")
+        Faker.seed(42)
         self.taxonomy = {
             "campaign": "{campaign_name}_{free_text}_{product_category}_{objective}_{country}",
             "ad_set": "{audience}_{free_text}_{journey_stage}_{placement}_{device}",
             "ad": "{creative_name}_{free_text}_{creative_type}_{creative_dimension}"
         }
-        Faker.seed(42)
+        self.client_ids = self.__generate_client_ids()
         with open("src/db_populator/taxonomy.json", 'r') as file:
             self.taxonomy_fields = json.load(file)
+
+    def __generate_client_ids(self):
+        client_ids = {}
+
+        for _ in range(2):
+            client_id = f"5{self.fake.unique.random_int(min=10000, max=99999)}40"
+            client_secret = str(uuid4())+str(uuid4())
+            client_ids[client_id] = {
+                "client_secret": client_secret,
+                "refresh_token": str(uuid4()),
+                "user_id": ":".join([client_id, client_secret])
+            }
+        return client_ids
 
     def __get_all_dates_between(self, date_start, date_end):
         date_range = []
@@ -70,56 +84,61 @@ class Generator:
             creative_type=rand_infos["creative_type"],
             creative_dimension=rand_infos["creative_dimension"],
             date_start=date_start if not date_start else date_start.strftime("%Y%m%d"),
-            date_end=date_start if not date_start else date_start.strftime("%Y%m%d")
+            date_end=date_end if not date_end else date_end.strftime("%Y%m%d")
         )
-    
+
     def generate_auth_data(self):
-        return [(
-                "53497593",
-                "6be00ce921e80deb2734dc892231ce22ed6d13738f8ca5455676fd3b6904e27e",
-                str(uuid4())
-            ),
+        return [
             (
-                "54325665",
-                "432019u5012h95h123984h128934yh1289348iup123h489p123894123ui4uy84u",
-                str(uuid4())
+            client_id,
+            infos["client_secret"],
+            infos["refresh_token"]
             )
+            for client_id, infos in self.client_ids.items()
         ]
 
     def generate_campaign_data(self, num_campaigns=5, num_adsets=3, num_ads=2, start_date="2022-01-01"):
         data = []
-        
-        for campaign_num in range(1, num_campaigns + 1):
-            date_start, date_end = self.__generate_campaign_dates()
-            free_text = "-".join(self.fake.words(random.randint(3,7)))
-            campaign_name = self.format_infos(self.taxonomy["campaign"], free_text, date_start, date_end)
-            campaign_id = self.fake.unique.random_int(min=70000000, max=79999999)
 
-            for adset_num in range(1, num_adsets + 1):
-                adset_name = self.format_infos(self.taxonomy["ad_set"], free_text)
-                adset_id = self.fake.unique.random_int(min=10000, max=99999)
+        for client in self.client_ids.values():
+            for account in range(4):
+                account_id = str(self.fake.unique.random_int(min=80000000, max=89999999))
+                account_name = "-".join(self.fake.words(2))
 
-                for ad_num in range(1, num_ads + 1):
-                    ad_name = self.format_infos(self.taxonomy["ad"], free_text)
-                    ad_id = self.fake.unique.random_int(min=100000, max=999999)
+                for campaign_num in range(1, num_campaigns + 1):
+                    date_start, date_end = self.__generate_campaign_dates()
+                    free_text = "-".join(self.fake.words(random.randint(3,7)))
+                    campaign_name = self.format_infos(self.taxonomy["campaign"], free_text, date_start, date_end)
+                    campaign_id = str(self.fake.unique.random_int(min=70000000, max=79999999))
 
-                    for date in self.__get_all_dates_between(date_start, date_end):
-                        impressions = random.randint(1000, 10000)
-                        clicks = random.randint(100, impressions)
-                        cost = round(random.uniform(50, 500), 2)
-                        revenue = round(random.uniform(100, 500), 2)
+                    for adset_num in range(1, num_adsets + 1):
+                        adset_name = self.format_infos(self.taxonomy["ad_set"], free_text)
+                        adset_id = str(self.fake.unique.random_int(min=10000, max=99999))
 
-                        data.append((
-                            date.strftime("%Y-%m-%d"),
-                            campaign_name,
-                            campaign_id,
-                            adset_name,
-                            adset_id,
-                            ad_name,
-                            ad_id,
-                            clicks,
-                            cost,
-                            impressions,
-                            revenue
-                        ))
+                        for ad_num in range(1, num_ads + 1):
+                            ad_name = self.format_infos(self.taxonomy["ad"], free_text)
+                            ad_id = str(self.fake.unique.random_int(min=100000, max=999999))
+
+                            for date in self.__get_all_dates_between(date_start, date_end):
+                                impressions = random.randint(1000, 10000)
+                                clicks = random.randint(100, impressions)
+                                cost = round(random.uniform(50, 500), 2)
+                                revenue = round(random.uniform(100, 500), 2)
+
+                                data.append((
+                                    client["user_id"],
+                                    date.strftime("%Y-%m-%d"),
+                                    account_id,
+                                    account_name,
+                                    campaign_name,
+                                    campaign_id,
+                                    adset_name,
+                                    adset_id,
+                                    ad_name,
+                                    ad_id,
+                                    clicks,
+                                    cost,
+                                    impressions,
+                                    revenue
+                                ))
         return data

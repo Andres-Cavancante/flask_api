@@ -40,8 +40,6 @@ class database:
         if check:
             raise ApiException(f"Requested columns {check} do not exist on table '{table}'", 400)
 
-
-
     def query_all(self, table_name: str):
         table_columns = self.__get_table_columns(table_name)
         data = self.__interact(f"SELECT * FROM {table_name}")
