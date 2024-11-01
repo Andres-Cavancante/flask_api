@@ -1,17 +1,22 @@
+import json
+import jwt
+import base64
 from typing import List
 from datetime import datetime, timezone, timedelta
-import jwt
+from cryptography.fernet import Fernet
 from src.exceptions import ApiException
 from src.database_connect import database
 
 SECRET_KEY = "flask_api"
+CIPHER_KEY = base64.urlsafe_b64encode(b"___________flask__api___________")
 
 class Auth:
-    def __init__(self, refresh_token: str=None):
+    def __init__(self, refresh_token: str=None, account_id = None):
         self.__table_name = "authorization"
         self.__flask_database = database("flask_api")
         self.refresh_token = refresh_token
-        self.accounts = []
+        self.account_id = account_id
+        self.__client_hash = None
 
     def __query_table(self, columns: List[str], custom_filter: str=None):
         try:
@@ -21,7 +26,7 @@ class Auth:
                 custom_filter=custom_filter
             )
         except Exception as error:
-            return ApiException(error.msg, 500).get_return_msg()
+            return ApiException(str(error), 500).get_return_msg()
 
     def get_clients(self):
         return self.__query_table(
@@ -48,19 +53,21 @@ class Auth:
         try:
             response = self.__flask_database.query_columns(
                 "authorization",
-                ["refresh_token", "accounts"],
+                ["client_id", "client_secret"],
                 custom_filter=f"refresh_token = '{self.refresh_token}'"
             )
         except ApiException as error:
             return error.get_return_msg()
-        self.accounts = response["accounts"].split(",")
+
+        concat_info = f"{response['client_id']}:{response['client_secret']}"
+        self.__client_hash = Fernet(CIPHER_KEY).encrypt(concat_info.encode()).decode('utf-8')
         return bool(response)
 
     def generate_access_token(self):
         expiration = datetime.now(timezone.utc) + timedelta(hours=1)
         payload = {
             "exp": expiration,
-            "accounts_with_access": self.accounts
+            "client_hash": self.__client_hash
         }
         token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
         return token
@@ -68,7 +75,25 @@ class Auth:
     def check_token_validity(self, access_token: str):
         token = access_token.replace("Bearer", "").strip()
         try:
-            self.accounts = jwt.decode(token, SECRET_KEY, algorithms=["HS256"]).get("accounts_with_access", [])
+            jwt_info = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+            client_hash = jwt_info.get("client_hash")
+            if not client_hash:
+                raise ApiException("Token is invalid", 401)
+            client_info = Fernet(CIPHER_KEY).decrypt(client_hash).decode().split(":")
+            client_id = client_info[0]
+            client_secret = client_info[1]
+            response = self.__flask_database.query_columns( #REVISAR - isso aqui é usado várias vezes
+                "authorization",
+                ["accounts"],
+                custom_filter=(
+                    f"client_id = '{client_id}' "
+                    f"AND client_secret = '{client_secret}' "
+                    f"AND JSON_CONTAINS(accounts, '\"{self.account_id}\"')"
+                )
+            )
+            if not response:
+                raise ApiException((f"Token does not have access to account {self.account_id} or "
+                                    "it may not exist"), 401)
         except jwt.ExpiredSignatureError:
              raise ApiException("Token has expired", 401)
         except jwt.InvalidTokenError:

@@ -59,7 +59,7 @@ class database:
             query = f"SELECT {', '.join(columns)} FROM {table_name}"
 
         if custom_filter:
-            query += " WHERE " if not "WHERE" in query else "AND"
+            query += " WHERE " if not "WHERE" in query else " AND "
             query += custom_filter
 
         data = self.__interact(query)

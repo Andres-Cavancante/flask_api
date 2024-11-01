@@ -17,13 +17,12 @@ def token_required(f):
             }), 401
 
         try:
-            auth = Auth()
+            auth = Auth(account_id=kwargs["account_id"])
             auth.check_token_validity(access_token)
         except ApiException as error:
             ret_mgs = error.get_return_msg()
             return jsonify(ret_mgs), ret_mgs["code"]
 
-        kwargs["accounts"] = auth.accounts
         return f(*args, **kwargs)
 
     return wrapper
@@ -52,6 +51,10 @@ def index():
 def retrieve_clients():
     pass
 
+@app.route("/accounts")
+def list_accounts():
+    pass
+
 @app.route("/authorize", methods=["GET"])
 @assert_payload
 def get_refresh_token(payload: Dict[str, Any]):
@@ -67,14 +70,14 @@ def get_refresh_token(payload: Dict[str, Any]):
 @app.route("/reports/<account_id>", methods=["GET"])
 @token_required
 @assert_payload
-def get_data(account_id, accounts: List[str], payload: Dict[str, Any]):
-    data = Reports().get_basic_data(payload)
+def get_data(account_id, payload: Dict[str, Any]):
+    data = Reports(account_id).get_basic_data(payload)
     return jsonify(data), 200 #REVISAR - se eu retornar o code no exception, ele vai fazer jsonfy no code
 
 @app.route("/token", methods=["POST"])
 @assert_payload
 def issue_token(payload: Dict[str, Any]):
-    authorization = Auth(payload["refresh_token"])
+    authorization = Auth(refresh_token=payload["refresh_token"])
     if authorization.is_token_valid():
         return jsonify({"access_token": authorization.generate_access_token()}), 200
     return jsonify({"error": "Invalid refresh token"}), 401

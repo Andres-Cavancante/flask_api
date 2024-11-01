@@ -5,11 +5,11 @@ USE flask_api;
 CREATE TABLE authorization (
     client_id varchar(8) not null UNIQUE,
     client_secret varchar(72) not null UNIQUE,
-    refresh_token varchar(36) not null UNIQUE
+    refresh_token varchar(36) not null UNIQUE,
+    accounts JSON
 );
 
 CREATE TABLE basic (
-    user_id varchar (255) not null,
     date DATE not null,
     account_id varchar (14) not null,
     account_name varchar (255) not null,

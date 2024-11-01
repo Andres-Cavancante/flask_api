@@ -27,8 +27,17 @@ class Generator:
             client_ids[client_id] = {
                 "client_secret": client_secret,
                 "refresh_token": str(uuid4()),
-                "user_id": ":".join([client_id, client_secret])
+                "accounts": []
             }
+
+        with open("clients_info.jsonl", "w", encoding="utf-8") as file:
+            for row, value in client_ids.items():
+                file.write(
+                    json.dumps({
+                            "client_id": row,
+                            "client_secret": value["client_secret"]
+                        }) + '\n'
+                )
         return client_ids
 
     def __get_all_dates_between(self, date_start, date_end):
@@ -92,7 +101,8 @@ class Generator:
             (
             client_id,
             infos["client_secret"],
-            infos["refresh_token"]
+            infos["refresh_token"],
+            json.dumps(infos["accounts"])
             )
             for client_id, infos in self.client_ids.items()
         ]
@@ -100,9 +110,10 @@ class Generator:
     def generate_campaign_data(self, num_campaigns=5, num_adsets=3, num_ads=2, start_date="2022-01-01"):
         data = []
 
-        for client in self.client_ids.values():
+        for client in self.client_ids:
             for account in range(4):
                 account_id = str(self.fake.unique.random_int(min=80000000, max=89999999))
+                self.client_ids[client]["accounts"].append(account_id)
                 account_name = "-".join(self.fake.words(2))
 
                 for campaign_num in range(1, num_campaigns + 1):
@@ -126,7 +137,6 @@ class Generator:
                                 revenue = round(random.uniform(100, 500), 2)
 
                                 data.append((
-                                    client["user_id"],
                                     date.strftime("%Y-%m-%d"),
                                     account_id,
                                     account_name,

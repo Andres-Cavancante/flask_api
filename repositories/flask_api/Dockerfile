@@ -10,5 +10,7 @@ EXPOSE 5000
 # wait for the mysql database
 # CMD ["sh", "-c", "sleep 20 && python src/db_populator/populate.py && tail -f /dev/null"]
 
+# CMD ["sh", "-c", "sleep 20 && python src/db_populator/populate.py && python main.py"]
+
 # RUN echo "Dependencies installed and tables populated."
 # CMD ["python", "main.py"]

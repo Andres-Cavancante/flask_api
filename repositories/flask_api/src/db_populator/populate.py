@@ -27,21 +27,10 @@ cursor.execute("USE flask_api;")
 
 gen = Generator()
 
-for item in gen.generate_auth_data():
-    cursor.execute((
-        "INSERT INTO authorization"
-        "(client_id,"
-        "client_secret,"
-        "refresh_token)"
-        "VALUES (%s, %s, %s)"
-        ), item)
-    connection.commit()
-
 for item in gen.generate_campaign_data():
     cursor.execute((
         "INSERT INTO basic"
-        "(user_id,"
-        "date,"
+        "(date,"
         "account_id,"
         "account_name,"
         "campaign_name,"
@@ -54,8 +43,20 @@ for item in gen.generate_campaign_data():
         "cost,"
         "impressions,"
         "revenue)"
-        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
     ), item)
+    connection.commit()
+
+gen.generate_campaign_data()
+for item in gen.generate_auth_data():
+    cursor.execute((
+        "INSERT INTO authorization"
+        "(client_id,"
+        "client_secret,"
+        "refresh_token,"
+        "accounts)"
+        "VALUES (%s, %s, %s, %s)"
+        ), item)
     connection.commit()
 
 cursor.close()
